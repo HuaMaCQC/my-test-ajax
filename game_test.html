@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.2.1.min.js"></script>
+  <meta charset="UTF-8">
+  <title>賽事資料</title>
+  <style>
+      p
+      {
+       display: inline; 
+      }
+    </style>
+</head>
+
+<body>
+  <form id="user">
+    <p>帳號:<input type="text" name="username"></p>
+    <p>密碼:<input type="password" name="password"></p>
+    <button type="button" onclick="Sign_in()">登入</button>
+    <p id="user_test"></p>
+    <select id="page_num" onchange="click_page()">
+      <option value="25">25
+      <option value="10">10
+      <option value="50">50
+      <option value="100">100    
+    </select>
+    
+  </form>
+  <table id="tbl" width="60%" border="1" cellpadding="0" cellspacing="0" style="font-size:13px; border-collapse:collapse; text-align: center;" bordercolor="#ccc">
+    <tr height="40">
+      <th width="10%" align="center" style="color:#111; background:#d2ebf4;" onclick="_Sort('number_img','number')">賽事編號<img id="number_img" width=10px></th>
+      <th width="20%" align="center" style="color:#111; background:#d2ebf4;" onclick="_Sort('Alliance_img','Alliance')">聯盟<img id="Alliance_img" width=10px></th>
+      <th width="23%" align="center" style="color:#111; background:#d2ebf4;">對戰隊伍<br>(客隊 對 主隊)</th>
+      <th width="15%" align="center" style="color:#111; background:#d2ebf4;" onclick="_Sort('date_img','Date')">比賽日期<img id="date_img" width=10px></th>
+      <th width="10%" align="center" style="color:#111; background:#d2ebf4;">上半場</th>
+      <th width="10%" align="center" style="color:#111; background:#d2ebf4;">全場</th>
+      <th width="12%" align="center" style="color:#111; background:#d2ebf4;">備註</th>
+    </tr>
+      <tbody id="game_form">
+      </tbody>
+    </tr>
+  </table>
+  <button onclick="up()" type="button">上一頁</button>
+  <p id="page"></p><P>頁</P>
+  <button onclick="down()" type="button">下一頁</button>
+  <P>總筆數:</P><p id="ALL"></P>
+</body>
+
+</html>
+
+<script>
+  var Quantity =0;
+  var ALL=1;
+  var now = 1;
+  var my_array = new Array(); 
+  var now_msg = new Array(); //json 接到的陣列
+  var page_num = $("#page_num").val(); //頁面筆數
+  function Sign_in()
+  {//登入
+    $.ajax({
+      url:"test_php.php",
+      type:"POST", 
+      data:$("#user").serialize(),
+      dataType:"json",
+      
+      success:function(msg){
+        console.log(msg);
+        $("#game_form").html("");
+        ALL=1;
+        Quantity =0;
+        now = 1;
+        my_array = new Array();
+        if(msg[0] == "帳密錯誤")
+        {
+          alert('帳密錯誤');
+          $("#page").html(now+"/"+ALL); //顯示當前頁數
+          $("#ALL").html(Quantity); //顯示總數量
+        }else
+        {
+          now_msg = msg;
+          my_array = Sort(msg,'Date','reverse');
+          page_num = $("#page_num").val();
+          for (var i = 0 ;  i < page_num ; i++)
+          {
+            $("#game_form").append(my_array[i]);
+          }
+          ALL = Math.ceil(Quantity/page_num);  //計算總頁數
+          $("#page").html(now+"/"+ALL); //顯示當前頁數
+          $("#ALL").html(Quantity); //顯示總數量
+        }
+        //document.write(msg);
+        //alert('成功');
+      },
+      error:function(xhr,ajaxOptions,thrownError){
+        alert('伺服器連線失敗'+thrownError+ajaxOptions);
+      }
+    })
+  }
+  function _Sort(id,type)
+  { //按下日期排序
+    if(now_msg != "")
+    {
+      //箭頭重製
+      if(type == 'number') //如果現在是按編號
+      {
+        $("#date_img").attr("src",null);  //將其他圖片關掉
+        $("#Alliance_img").attr("src",null);
+      }
+      else if(type == 'Alliance')  //如果現在是按聯盟
+      {
+        $("#number_img").attr("src",null);
+        $("#date_img").attr("src",null);
+      }
+      else if(type == 'Date') //如果現在是按日期
+      {
+        $("#Alliance_img").attr("src",null);
+        $("#number_img").attr("src",null);
+      }
+      $("#game_form").html(""); //清空表格
+      now = 1 ;   //重製頁數
+      if($("#"+id).attr("src")==null || $("#"+id).attr("src")=="img/up.png") //如果是第一次按或目前是升序
+      {//升序
+        $("#"+id).attr("src","img/down.png");                            //顯示降序圖片
+        my_array = Sort(now_msg,type,'sort');                           // 排序 降
+        for (var i = 0 ;  i < page_num ; i++)                             //印出表格
+        {
+          $("#game_form").append(my_array[i]);    
+        }
+        $("#page").html(now+"/"+ALL); //顯示當前頁數
+      }      
+      else if($("#"+id).attr("src")=="img/down.png")        // 如果目前是降序
+      {//降序
+        $("#"+id).attr("src","img/up.png");                    
+        my_array = Sort(now_msg,type,'reverse');
+        for (var i = 0 ;  i < page_num ; i++)
+        { 
+          $("#game_form").append(my_array[i]);
+        }
+        $("#page").html(now+"/"+ALL); //顯示當前頁數
+      }    
+    }  
+  }
+  function Sort(array,str,method)
+  {//排序
+    Quantity = 0;
+    var sort_array = new Array(); 
+    if(array != "")
+    {
+      if(method == "sort")
+      {//升序
+        array = array.sort(function (a, b) 
+        {
+          return a[str] > b[str] ? 1 : -1;
+        });
+      }else if (method == "reverse")
+      {//降序
+        array = array.sort(function (a, b) 
+        {
+          return a[str] > b[str] ? -1 : 1;
+        });
+      }else
+      {
+        return;
+      }
+      for(var i = 0, len = array.length ; i <len ; i ++ )
+      { 
+        Quantity++; //記錄共幾筆
+        sort_array.push('<tr height="40">'+
+                        '<td width="10%">'+array[i]['number']+'</td>'+
+                        '<td width="20%">'+array[i]['Alliance']+'</td>'+
+                        '<td width="23%">'+array[i]['Visitors']+
+                          '<font style="color:#900;">對 </font>'+array[i]['Home team']+'</td>'+
+                        '<td width="15%">'+array[i]['Date']+'</td>'+
+                        '<td width="10%">'+array[i]['First half']+'</td>'+
+                        '<td width="10%">'+array[i]['All_Game']+'</td>'+
+                        '<td width="12%">'+array[i]['Remarks']+'</td>'+
+                      '</tr>');
+      }
+      return sort_array;
+    }
+  }
+  function click_page()
+  { //輸入資料失去焦點
+     if(my_array != '')
+     {
+      $("#game_form").html("");
+      page_num = $("#page_num").val();
+      ALL = Math.ceil(Quantity/page_num);  //計算總頁數
+      $("#page").html(now+"/"+ALL);
+      now = 1;
+      for (var i = 0 ;  i < page_num ; i++)
+      {
+        $("#game_form").append(my_array[i]);
+      }
+     }
+  }
+  function up()
+  { //上一頁
+    if(now != 1) //如果不是在第一頁
+    {
+      $("#game_form").html("");
+      now = now-1 ;             //跳至上一頁
+      var up_min = (now-1) * page_num;       //設定最小值
+      var up_max = now * page_num ;      //設定最大值
+      for (var i = up_min ;i < up_max ; i++)
+      {
+        $("#game_form").append(my_array[i]);
+      }
+       $("#page").html(now+"/"+ALL);
+    }
+  }
+  function down()
+  {//下一頁
+    if(now != ALL) //如果不是在最後一頁
+    {
+      $("#game_form").html("");
+      now ++ ; 
+      var down_min = (now-1) * page_num ;
+      var down_max = now * page_num;
+      if (down_max > Quantity)
+      {
+          down_max = Quantity;
+      }
+      for (var i = down_min ;i < down_max ; i++)
+      {
+        $("#game_form").append(my_array[i]);
+      }
+      $("#page").html(now+"/"+ALL);
+    }
+  }
+</script>
